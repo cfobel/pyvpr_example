@@ -47,8 +47,11 @@ Run VPR equivalent through Python bindings.""",
     parser.add_argument(nargs=1, dest='arch_file')
     args = parser.parse_args()
 
-    args.netlist_file = args.netlist_file[0]
-    args.arch_file = args.arch_file[0]
+    if args.output_dir:
+        args.output_dir = path(args.output_dir)
+        args.output_dir.makedirs_p()
+    args.netlist_file = path(args.netlist_file[0])
+    args.arch_file = path(args.arch_file[0])
     assert(args.run_count > 0)
     
     return args
@@ -84,3 +87,12 @@ if __name__ == '__main__':
     print 'Final costs: %s' % np_final_costs
     print 'Mean cost: %s' % np.mean(np_final_costs)
     print 'Stddev cost: %s' % np.std(np_final_costs)
+
+    # Save final placements to the specified output directory
+    if args.output_dir:
+        for i, p in enumerate(new_placements):
+            output_filename = path('%s-seed%d-run%dof%d-placed.out'\
+                    % (args.netlist_file.namebase, args.seed, i + 1,
+                            args.run_count))
+            output_path = args.output_dir / output_filename
+            output_path.write_bytes(str(p))
