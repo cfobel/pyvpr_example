@@ -20,9 +20,11 @@ optional arguments:
 
 
 Example run configuration:
-    python vpr.py -c 2 --seed 100 /usr/local/opt/VPR_v5/VPR_HET/benchmarks/mcnc/tseng.net /usr/local/opt/VPR_v5/VPR_HET/k4-n1.xml
+    python vpr.py -c 2 --seed 100 --output_dir results /usr/local/opt/VPR_v5/VPR_HET/benchmarks/mcnc/tseng.net /usr/local/opt/VPR_v5/VPR_HET/k4-n1.xml
 
-This should produce output similar to:
+This should create a directory called results in the the current working
+directory and write two final placements to it while producing output similar
+to:
 
 VPR FPGA Placement and Routing.
 Version: Version 5.0.2
