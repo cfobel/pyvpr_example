@@ -40,6 +40,9 @@ Run VPR equivalent through Python bindings.""",
     parser.add_argument('-c', '--run_count',
                     dest='run_count', default=1, type=int,
                     help='Number of passes to run (default=%(default)s).')
+    parser.add_argument('--processes',
+                    dest='process_count', default=cpu_count(), type=int,
+                    help='Number of processes to dispatch (default=%(default)s).')
     parser.add_argument('-s', '--seed', default=1, type=int,
                     help='Random seed (default=%(default)s).')
     parser.add_argument(nargs=1, dest='netlist_file')
@@ -91,8 +94,8 @@ if __name__ == '__main__':
         best_grid, min_id, costs = c.swaps_min_placement(seed=None)
         return best_grid, min_id, costs
 
-    pool = Pool(processes=cpu_count())
-    pool2 = Pool(processes=cpu_count())
+    pool = Pool(processes=args.process_count)
+    pool2 = Pool(processes=args.process_count)
 
     vpr_context = VPRContext(vpr_args)
     placement = vpr_context.get_random_placement()
