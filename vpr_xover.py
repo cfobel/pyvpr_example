@@ -1,14 +1,17 @@
 #!/usr/bin/env python
+from __future__ import division
 from collections import deque, namedtuple
 from multiprocessing import Process, cpu_count, Pool
 import math
 import itertools
+from datetime import datetime
 
 from path import path
 import numpy as np
 
 from pyvpr import VPRContext, BBCalculator, PlaceResult, vpr_ext,\
         ConstrainedSwapPlacementCombination
+from silence import Silence
 
 
 def get_modifier(placement, seed=1):
@@ -69,22 +72,24 @@ if __name__ == '__main__':
 
     print vpr_args
     
-    #Paralleize this loop
+    #Parallelize this loop
     
     def apply_modifier(vpr_args, io_grid, seed=0):
-        vpr_context = VPRContext(vpr_args)
+        with Silence():
+            vpr_context = VPRContext(vpr_args)
 
-        placement = vpr_context.get_random_placement()
-        placement.set_io(io_grid)
-        calc = BBCalculator.create(placement)
-        initial_cost = calc.compute_cost()
-        modifier = get_modifier(placement, seed=seed)
-        new_placement = modifier.get_placement()
+            placement = vpr_context.get_random_placement()
+            placement.set_io(io_grid)
+            calc = BBCalculator.create(placement)
+            initial_cost = calc.compute_cost()
+            modifier = get_modifier(placement, seed=seed)
+            new_placement = modifier.get_placement()
         return new_placement.get_io_grid(), new_placement.get_grid()
 
     def apply_combination(vpr_args, io_grid, grid1, grid2, seed=None):
-        vpr_context = VPRContext(vpr_args)
-        p1 = vpr_context.get_random_placement()
+        with Silence():
+            vpr_context = VPRContext(vpr_args)
+            p1 = vpr_context.get_random_placement()
         p1.set_io(io_grid)
         p1.set_grid(grid1)
         p2 = p1.copy()
@@ -97,31 +102,49 @@ if __name__ == '__main__':
     pool = Pool(processes=args.process_count)
     pool2 = Pool(processes=args.process_count)
 
-    vpr_context = VPRContext(vpr_args)
+    with Silence():
+        vpr_context = VPRContext(vpr_args)
     placement = vpr_context.get_random_placement()
     io_grid = placement.get_io_grid() 
 
+    modifier_start = datetime.now()
     modifier_results = [pool.apply_async(apply_modifier, (vpr_args,
             io_grid, i)) for i in range(args.run_count)]
 
+    # Wait for all modifier jobs to complete
     pool.close()
     pool.join()
+    modifier_end = datetime.now()
+    modifier_seconds = (modifier_end - modifier_start).total_seconds()
+    print 'Starting placement generation/improvement completed in %.2f seconds'\
+            ' (%.2fs/placement) [%d placements]' % (modifier_seconds,
+                    (modifier_seconds / args.run_count), args.run_count)
 
     combine_results = []
 
+    combine_start = datetime.now()
     # This will a xover for each two-way pairing of resultant placements from
     # the previous stage.  Note that multiple combinations are being done per
     # pair, each starting with a different seed.
+    placement_count = len(modifier_results)
+    combinations = itertools.combinations(range(placement_count), 2)
+    combinations_count =  placement_count * (placement_count - 1) / 2
     for seed in range(4):
-        for i, j in itertools.combinations(range(len(modifier_results)), 2):
+        for i, j in combinations:
             grid1 = modifier_results[i].get()[1]
             grid2 = modifier_results[j].get()[1]
             result = pool2.apply_async(apply_combination, (vpr_args, io_grid,
                     grid1, grid2), dict(seed=seed))
             combine_results.append(result)
 
+    # Wait for all combination jobs to complete
     pool2.close()
     pool2.join()
+    combine_end = datetime.now()
+    combine_seconds = (combine_end - combine_start).total_seconds()
+    print 'Placement pair combinations completed in %.2f seconds'\
+            ' (%.2fs/combination) [%d combinations]' % (combine_seconds,
+                    (combine_seconds / combinations_count), combinations_count)
 
     results = [dict(zip(['best_grid', 'min_id', 'costs'], r.get())) for r in combine_results]
 
