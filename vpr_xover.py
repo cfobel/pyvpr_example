@@ -106,6 +106,9 @@ if __name__ == '__main__':
 
     combine_results = []
 
+    # This will a xover for each two-way pairing of resultant placements from
+    # the previous stage.  Note that multiple combinations are being done per
+    # pair, each starting with a different seed.
     for seed in range(4):
         for i, j in itertools.combinations(range(len(modifier_results)), 2):
             grid1 = modifier_results[i].get()[1]
@@ -119,5 +122,9 @@ if __name__ == '__main__':
 
     results = [dict(zip(['best_grid', 'min_id', 'costs'], r.get())) for r in combine_results]
 
-    path('results.out').pickle_dump(results)
-    loaded_results = path('results.out').pickle_load()
+    if args.output_dir:
+        # Dump results to a file
+        args.output_dir.joinpath('results.out').pickle_dump(results)
+
+        # Example to show loading results out of the file again
+        loaded_results = args.output_dir.joinpath('results.out').pickle_load()
