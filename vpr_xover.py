@@ -8,6 +8,10 @@ from datetime import datetime
 
 from path import path
 import numpy as np
+import matplotlib
+matplotlib.use('PDF')
+import matplotlib.pyplot as plt
+
 
 from pyvpr import VPRContext, BBCalculator, PlaceResult, vpr_ext,\
         ConstrainedSwapPlacementCombination
@@ -154,3 +158,8 @@ if __name__ == '__main__':
 
         # Example to show loading results out of the file again
         loaded_results = args.output_dir.joinpath('results.out').pickle_load()
+
+    # Plot an example costs array (from a single combination pair) using
+    # matplotlib.
+    plt.plot(range(len(results[0]['costs'])), results[0]['costs'])
+    plt.savefig('test.pdf')
